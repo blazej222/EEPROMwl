@@ -3,6 +3,9 @@
 #include <EEPROM.h>
 #include "EEPROMwl.h"
 #include <string.h>
+
+//TODO:Try changing to proper .cpp file when possible
+
 template <class T>
 
 uint32_t __EEPROM_block<T>::getNextWritePosition() // this should return an address in status partition of where the write should now occur
@@ -17,6 +20,7 @@ uint32_t __EEPROM_block<T>::getNextWritePosition() // this should return an addr
         if ((uint8_t)EEPROM.read(i) != (uint8_t)(EEPROM.read(i - 1) + 1)) //normal case, if current not equal to previous +1 this is where we should write
             return i; // if current cell does not equal to previous + 1 return index
     }
+    //FIXME:Undefined behavior possible, return first byte by default or raise exception?
 }
 
 template <class T>
@@ -49,7 +53,7 @@ void __EEPROM_block<T>::begin(uint32_t _data_begin, uint32_t _data_end, uint32_t
 }
 
 template <class T>
-void __EEPROM_block<T>::put(T data) //ta funckja jest używana wewnętrznie do umieszczenia danych w pojedyńczym bloku, tj. partycji
+void __EEPROM_block<T>::put(T data) //this function is used internally to put data in single block
 {
     uint32_t write_pos = getNextWritePosition();
     // Serial.println(write_pos);
@@ -83,25 +87,30 @@ void __EEPROM_block<T>::getBlockInfo(Block_data &info)
 template <class T, uint16_t amountOfVariables>
 void EEPROMwl<T, amountOfVariables>::distributeUniformly(uint32_t beginAddress, uint32_t totalSpaceToAllocate)
 {
-    //Cały dostępny dla nas obszar podzielimy na partycje składające się z dwóch części - część danych oraz część bufora. Istnieje osobna partycja dla każdej zmiennej.
-    uint32_t onePartitionSize = totalSpaceToAllocate / amountOfVariables; //Rozmiar jednej partycji to całość dostępnego nam miejsca podzielona na liczbę zmiennych // 256
-    uint32_t statusBufferSize = onePartitionSize / (sizeof(T) + 1);       //Rozmiar jednej partycji dzielimy teraz na rozmiar jednej zmiennej. To nasza długość części statusu// 51,2
-    uint32_t dataBufferSize = statusBufferSize * sizeof(T);               //Rozmiar części danych będzie n razy większy niż część statusu 204,8
-    //W ogólności - dzielimy partycję jednej zmiennej w proporcjach 1:n, gdzie n oznacza liczbę bajtów zmiennej
-    //Zapewnia to najbardziej optymalne rozmieszczenie w pamięci
-    for (uint16_t i = 0; i < amountOfVariables; i++) //Teraz policzmy granice partycjii poszczególnych zmiennych dla każdej z nich
+    //Whole eeprom memory assignedfor us should be divided into amountOfVariables blocks, each divided into 2 partitions - status and data partition
+    uint32_t onePartitionSize = totalSpaceToAllocate / amountOfVariables; //Total size of one block equals total space assigned divided by amount of variables // 256
+    uint32_t statusBufferSize = onePartitionSize / (sizeof(T) + 1);       //Size of one block is divided by (size of variable stored + 1). This is length of status partition// 51,2
+    uint32_t dataBufferSize = statusBufferSize * sizeof(T);               //204,8
+    //Generally, we divide one block of data (assigned to one variable) in proportion 1:n, where n is sizeof(variable)
+    //This leaves us with an example for uint32_t as variable:
+    //Status length = (block length) / (sizeof(uint32_t) +1 ) = (block_length) / 5
+    //Data length = (status length) * sizeof(uint32_t) = (status_length) * 4
+
+    for (uint16_t i = 0; i < amountOfVariables; i++) //Let's calculate border values for partitions in each block
+    //Comments below contain example values of first block of data when 1024B eeprom is being assigned for 4 x 4bytes values.
     {
         uint32_t data_begin = beginAddress + i * onePartitionSize; // dataBegin address     0
         uint32_t data_end = data_begin + dataBufferSize - 1;       // dataEnd address       203
         uint32_t status_begin = data_end + 1;                      // statusBegin address;  204
         uint32_t status_end = status_begin + statusBufferSize - 1; // statusEnd address;    254
-        data[i].begin(data_begin, data_end, status_begin, status_end); //Inicjalizujemy blok __EEPROM_block
+        data[i].begin(data_begin, data_end, status_begin, status_end); //Initialize internal _EEPROM_block structure that keeps the data
     }
 }
 
 template <class T, uint16_t amountOfVariables>
 EEPROMwl<T, amountOfVariables>::EEPROMwl(uint32_t beginAddress, uint32_t totalSpaceToAllocate, bool eraseExistingMemory)
 {
+    //TODO: Remove this part of code when finally marked as unnecesary
     /*
     if (eraseExistingMemory)
     {
@@ -121,7 +130,7 @@ void EEPROMwl<T, amountOfVariables>::get(uint16_t idx, T &_data)
 }
 
 template <class T, uint16_t amountOfVariables>
-void EEPROMwl<T, amountOfVariables>::put(uint16_t idx, T _data) //to jest funkcja dostępna dla uzytkownika którą zapisujemy dane na partycjach
+void EEPROMwl<T, amountOfVariables>::put(uint16_t idx, T _data)
 {
     data[idx].put(_data);
 }
@@ -134,6 +143,11 @@ void EEPROMwl<T, amountOfVariables>::getBlockInfo(uint16_t idx, Block_data &info
 
 //-----------------------------------------------
 String Block_data::printResult(){
-    String result = (String)data_begin + '\n' + (String)data_end + '\n' + (String)status_begin + '\n' + (String)status_end + '\n' + (String)next_write + '\n' + (String)next_read;
+    String result = "Data begin:" + (String)data_begin +'\n' + \
+                    "Data end:" + (String)data_end + '\n' + \
+                    "Status begin:" + (String)status_begin + '\n' +\
+                    "Status end:" + (String)status_end + '\n' +\
+                    "Next Write:" + (String)next_write + '\n' +\
+                    "Next Read:"+ (String)next_read;
     return result;
 }
