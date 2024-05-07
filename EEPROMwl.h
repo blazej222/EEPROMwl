@@ -1,15 +1,17 @@
 #pragma once
 #include "Arduino.h"
 #include <EEPROM.h>
+#include <string.h>
 struct Block_data
 {
     uint32_t data_begin;
     uint32_t data_end;
     uint32_t status_begin;
     uint32_t status_end;
-    uint32_t status_length;
     uint32_t next_write;
+    uint32_t status_length;
     uint32_t next_read;
+    String printResult();
 };
 
 template <class T>
