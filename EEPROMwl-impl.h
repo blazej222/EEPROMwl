@@ -4,11 +4,14 @@
 #include "EEPROMwl.h"
 #include <string.h>
 
-//TODO:Try changing to proper .cpp file when possible
-
+/**
+ * @brief Returns an address in status partition of where the next write should occur.
+ * 
+ * @tparam T Type of variable to store in EEPROM memory.
+ * @return uint32_t Address in status partition of where the next write should occur.
+ */
 template <class T>
-
-uint32_t __EEPROM_block<T>::getNextWritePosition() // this should return an address in status partition of where the write should now occur
+uint32_t __EEPROM_block<T>::getNextWritePosition()
 {
     if ((uint8_t)EEPROM.read(status_begin) != (uint8_t)(EEPROM.read(status_end) + 1)) // special case: moving thorugh border
     {
@@ -17,14 +20,20 @@ uint32_t __EEPROM_block<T>::getNextWritePosition() // this should return an addr
 
     for (uint32_t i = status_begin + 1; i <= status_end; i++) 
     {
-        if ((uint8_t)EEPROM.read(i) != (uint8_t)(EEPROM.read(i - 1) + 1)) //normal case, if current not equal to previous +1 this is where we should write
-            return i; // if current cell does not equal to previous + 1 return index
+        if ((uint8_t)EEPROM.read(i) != (uint8_t)(EEPROM.read(i - 1) + 1))   // normal case, if current not equal to previous +1 this is where we should write
+            return i;                                                       // if current cell does not equal to previous + 1 return index
     }
     //FIXME:Undefined behavior possible, return first byte by default or raise exception?
 }
 
+/**
+ * @brief Returns an index in data partition that should be read next
+ * 
+ * @tparam T Type of variable to store in EEPROM memory.
+ * @return uint32_t Index in data partition that should be read now
+ */
 template <class T>
-uint32_t __EEPROM_block<T>::getNextReadPosition() // this returns an index in data partition that should be read now
+uint32_t __EEPROM_block<T>::getNextReadPosition()
 {
     uint32_t nextWrite = getNextWritePosition();
     if (nextWrite == status_begin)
@@ -33,6 +42,13 @@ uint32_t __EEPROM_block<T>::getNextReadPosition() // this returns an index in da
         return ((nextWrite - status_begin - 1) * sizeof(T)) + data_begin; // normal scenario
 }
 
+/**
+ * @brief Returns next status value that should be written.
+ * 
+ * @tparam T Type of variable to store in EEPROM memory.
+ * @param nextWrite 
+ * @return uint32_t Next status value that should be written.
+ */
 template <class T>
 uint32_t __EEPROM_block<T>::getNextStatusValue(uint32_t nextWrite)
 {
@@ -84,6 +100,17 @@ void __EEPROM_block<T>::getBlockInfo(Block_data &info)
 
 //------------------------------------------------------------
 
+/**
+ * @brief Divide `totalSpaceToAllocate` bytes across `amountOfVariables` partitions. 
+ *  
+ * Each partition consists of `status` and `data` partitions, where data contains actual data 
+ * and status contains metadata required to guarantee we read/write in correct places.
+ * 
+ * @tparam T Type of variable to store in EEPROM memory.
+ * @tparam amountOfVariables Amount of variables of type `T` that we will store inside EEPROM.
+ * @param beginAddress First byte of object.
+ * @param totalSpaceToAllocate Total amount of bytes available for all variables.
+ */
 template <class T, uint16_t amountOfVariables>
 void EEPROMwl<T, amountOfVariables>::distributeUniformly(uint32_t beginAddress, uint32_t totalSpaceToAllocate)
 {
@@ -97,7 +124,7 @@ void EEPROMwl<T, amountOfVariables>::distributeUniformly(uint32_t beginAddress, 
     //Data length = (status length) * sizeof(uint32_t) = (status_length) * 4
 
     for (uint16_t i = 0; i < amountOfVariables; i++) //Let's calculate border values for partitions in each block
-    //Comments below contain example values of first block of data when 1024B eeprom is being assigned for 4 x 4bytes values.
+    //Comments below contain example values of first block of data when 1024B eeprom is being assigned for 4 x 4 bytes values.
     {
         uint32_t data_begin = beginAddress + i * onePartitionSize; // dataBegin address     0
         uint32_t data_end = data_begin + dataBufferSize - 1;       // dataEnd address       203
@@ -107,34 +134,46 @@ void EEPROMwl<T, amountOfVariables>::distributeUniformly(uint32_t beginAddress, 
     }
 }
 
+/**
+ * @brief Construct a new EEPROMwl<T, amountOfVariables>::EEPROMwl object
+ * 
+ * @tparam T Type of variable to store in EEPROM memory.
+ * @tparam amountOfVariables Amount of variables of type `T` that we will store inside EEPROM.
+ * @param beginAddress First byte of object.
+ * @param totalSpaceToAllocate Total amount of bytes available for all variables.
+ */
 template <class T, uint16_t amountOfVariables>
-EEPROMwl<T, amountOfVariables>::EEPROMwl(uint32_t beginAddress, uint32_t totalSpaceToAllocate, bool eraseExistingMemory)
+EEPROMwl<T, amountOfVariables>::EEPROMwl(uint32_t beginAddress, uint32_t totalSpaceToAllocate)
 {
-    //TODO: Remove this part of code when finally marked as unnecesary
-    /*
-    if (eraseExistingMemory)
-    {
-        for (uint32_t i = beginAddress; i < beginAddress + totalSpaceToAllocate; i++)
-        {
-            EEPROM.update(i, 125);
-        }
-    }
-    */
     distributeUniformly(beginAddress, totalSpaceToAllocate);
 }
 
+/**
+ * @brief 
+ * 
+ * @tparam T 
+ * @tparam amountOfVariables 
+ * @param idx 
+ * @param _data 
+ */
 template <class T, uint16_t amountOfVariables>
 void EEPROMwl<T, amountOfVariables>::get(uint16_t idx, T &_data)
 {
     data[idx].get(_data);
 }
 
+/**
+ * @brief saves `_data` custom object to EEPROM.
+*/
 template <class T, uint16_t amountOfVariables>
 void EEPROMwl<T, amountOfVariables>::put(uint16_t idx, T _data)
 {
     data[idx].put(_data);
 }
 
+/**
+ * @brief Fills `info` with underlying block info.
+*/
 template <class T, uint16_t amountOfVariables>
 void EEPROMwl<T, amountOfVariables>::getBlockInfo(uint16_t idx, Block_data &info)
 {
@@ -142,12 +181,12 @@ void EEPROMwl<T, amountOfVariables>::getBlockInfo(uint16_t idx, Block_data &info
 }
 
 //-----------------------------------------------
-String Block_data::printResult(){
-    String result = "Data begin:" + (String)data_begin +'\n' + \
-                    "Data end:" + (String)data_end + '\n' + \
-                    "Status begin:" + (String)status_begin + '\n' +\
-                    "Status end:" + (String)status_end + '\n' +\
-                    "Next Write:" + (String)next_write + '\n' +\
-                    "Next Read:"+ (String)next_read;
-    return result;
-}
+// String Block_data::printResult(){
+//     String result = "Data begin:" + (String)data_begin +'\n' + \
+//                     "Data end:" + (String)data_end + '\n' + \
+//                     "Status begin:" + (String)status_begin + '\n' +\
+//                     "Status end:" + (String)status_end + '\n' +\
+//                     "Next Write:" + (String)next_write + '\n' +\
+//                     "Next Read:"+ (String)next_read;
+//     return result;
+// }

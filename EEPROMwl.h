@@ -40,7 +40,7 @@ class EEPROMwl
     void distributeUniformly(uint32_t beginAddress, uint32_t totalSpaceToAllocate);
 
 public:
-    EEPROMwl(uint32_t beginAddress, uint32_t totalSpaceToAllocate, bool eraseExistingMemory);
+    EEPROMwl(uint32_t beginAddress, uint32_t totalSpaceToAllocate);
     void get(uint16_t idx,T &_data);
     void put(uint16_t idx, T _data);
     void getBlockInfo(uint16_t idx, Block_data &info);
