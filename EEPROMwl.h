@@ -4,30 +4,30 @@
 #include <string.h>
 struct Block_data
 {
-    uint32_t data_begin;
-    uint32_t data_end;
-    uint32_t status_begin;
-    uint32_t status_end;
-    uint32_t next_write;
-    uint32_t status_length;
-    uint32_t next_read;
-    String printResult();
+    uint32_t dataBegin;
+    uint32_t dataEnd;
+    uint32_t statusBegin;
+    uint32_t statusEnd;
+    uint32_t nextWrite;
+    uint32_t statusLength;
+    uint32_t nextRead;
+    String getDebugData();
 };
 
 template <class T>
 class __EEPROM_block
 {
-    uint32_t data_begin;
-    uint32_t data_end;
-    uint32_t status_begin;
-    uint32_t status_end;
-    uint32_t status_length;
+    uint32_t dataBegin;
+    uint32_t dataEnd;
+    uint32_t statusBegin;
+    uint32_t statusEnd;
+    uint32_t statusLength;
     uint32_t getNextWritePosition();
     uint32_t getNextReadPosition();
     uint32_t getNextStatusValue(uint32_t nextWrite);
 
 public:
-    void begin(uint32_t _data_begin, uint32_t _data_end, uint32_t _status_begin, uint32_t _status_end);
+    void begin(uint32_t _dataBegin, uint32_t _dataEnd, uint32_t _statusBegin, uint32_t _statusEnd);
     void put(T data);
     void get(T &data);
     void getBlockInfo(Block_data &info);
