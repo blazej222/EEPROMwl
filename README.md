@@ -1,5 +1,7 @@
 # EEPROM wear leveling library
 ## Introduction
+This is a simple library that can be used for leveling EEPROM wear on Arduino devices (and basically any other device if a custom implementation of `EEPROM.get()`, `EEPROM.put()` and `EEPROM.write()` is provided).
+
 Each EEPROM cell has a limited amount of writes that can be performed until it becomes unrealiable.
 
 This library allows to store multiple variables of any type (builtin or custom classes) in EEPROM memory while avoiding EEPROM wear.
@@ -23,7 +25,7 @@ struct Object{
 The library will divide 1000 bytes (from address 0 to 999) 
 across 3 instances of variable (of type Object).
 */
-EEPROMwl<Object,3> eeprom_custom(0,1000,false); 
+EEPROMwl<Object,3> eeprom_custom(0,1000); 
 
 Object a,b,c,d;
 a.foo = 1;
@@ -68,6 +70,48 @@ Next Read in data partition:xxx
 
 ## Principle of operation
 
-#TODO: Write this
+Imagine you're trying to save a variable with a length of one byte, and the EEPROM memory you have available has a size of 10 bytes.
 
-### PLACEHOLDER
+The library divides available 10 bytes into two partitions - `status` partition containing information about how many writes were performed and where and `data` containing the actual variable.
+
+This is a representation of an EEPROM memory before any operations have been done ( `|` sign is a separator between data (on the left) and status (on the right)):
+
+```
+00 00 00 00 00 | 00 00 00 00 00
+```
+
+Let's assume you now use the library to write a byte with a value of `CA`
+
+```
+CA 00 00 00 00 | 01 00 00 00 00
+```
+
+Now you write a value of `FE`:
+
+```
+CA FE 00 00 00 | 01 02 00 00 00
+```
+
+And so on.
+
+Here's an example on a 3 byte value. Let's assume we have 20 bytes of memory available.
+
+The initial division will look like this:
+
+```
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 | 00 00 00 00 00
+```
+
+You write a value of `BA DB EE`
+
+```
+BA DB EE 00 00 00 00 00 00 00 00 00 00 00 00 | 01 00 00 00 00
+```
+
+And then another write of `FA DE DD` commences:
+
+```
+BA DB EE FA DE DD 00 00 00 00 00 00 00 00 00 | 01 02 00 00 00
+```
+
+
