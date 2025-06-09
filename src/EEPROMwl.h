@@ -41,7 +41,8 @@ class EEPROMwl
 
 public:
     EEPROMwl(uint32_t beginAddress, uint32_t totalSpaceToAllocate);
-    void get(uint16_t idx,T &_data);
+    void get(uint16_t idx, T &_data); // TODO: Implement simple assignment as below
+    // T &get(uint16_t idx);
     void put(uint16_t idx, T _data);
     void getBlockInfo(uint16_t idx, Block_data &info);
 };

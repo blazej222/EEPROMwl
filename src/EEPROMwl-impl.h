@@ -4,6 +4,8 @@
 #include "EEPROMwl.h"
 #include <string.h>
 
+//TODO: Move this file to separate .cpp
+
 /**
  * @brief Returns an address in status partition of where the next write should occur.
  * 
