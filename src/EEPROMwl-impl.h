@@ -10,17 +10,17 @@
  * @brief Returns an address in status partition of where the next write should occur.
  * 
  * @tparam T Type of variable to store in EEPROM memory.
- * @return uint32_t Address in status partition of where the next write should occur.
+ * @return eesize_t Address in status partition of where the next write should occur.
  */
 template <class T>
-uint32_t __EEPROM_block<T>::getNextWritePosition()
+eesize_t __EEPROM_block<T>::getNextWritePosition()
 {
     if ((uint8_t)EEPROM.read(statusBegin) != (uint8_t)(EEPROM.read(statusEnd) + 1))   // special case: moving thorugh border
     {
         return statusBegin;
     }
 
-    for (uint32_t i = statusBegin + 1; i <= statusEnd; i++) 
+    for (eesize_t i = statusBegin + 1; i <= statusEnd; i++) 
     {
         if ((uint8_t)EEPROM.read(i) != (uint8_t)(EEPROM.read(i - 1) + 1))               // normal case, if current not equal to previous +1 this is where we should write
             return i;                                                                   // if current cell does not equal to previous + 1 return index
@@ -32,12 +32,12 @@ uint32_t __EEPROM_block<T>::getNextWritePosition()
  * @brief Returns an index in data partition that should be read next
  * 
  * @tparam T Type of variable to store in EEPROM memory.
- * @return uint32_t Index in data partition that should be read now
+ * @return eesize_t Index in data partition that should be read now
  */
 template <class T>
-uint32_t __EEPROM_block<T>::getNextReadPosition()
+eesize_t __EEPROM_block<T>::getNextReadPosition()
 {
-    uint32_t nextWrite = getNextWritePosition();
+    eesize_t nextWrite = getNextWritePosition();
     if (nextWrite == statusBegin)
         return (statusBegin - sizeof(T));                                  // if next write would occur on the first cell read T last bytes
     else
@@ -49,10 +49,10 @@ uint32_t __EEPROM_block<T>::getNextReadPosition()
  * 
  * @tparam T Type of variable to store in EEPROM memory.
  * @param[in] nextWrite Address of next write in status partition
- * @return uint32_t Next status value that should be written.
+ * @return eesize_t Next status value that should be written.
  */
 template <class T>
-uint32_t __EEPROM_block<T>::getNextStatusValue(uint32_t nextWrite)
+eesize_t __EEPROM_block<T>::getNextStatusValue(eesize_t nextWrite)
 {
     if (nextWrite == statusBegin)
         return (uint8_t)(EEPROM.read(statusEnd) + 1);
@@ -70,7 +70,7 @@ uint32_t __EEPROM_block<T>::getNextStatusValue(uint32_t nextWrite)
  * @param[in] _statusEnd Address of last byte in status partition.
  */
 template <class T>
-void __EEPROM_block<T>::begin(uint32_t _dataBegin, uint32_t _dataEnd, uint32_t _statusBegin, uint32_t _statusEnd)
+void __EEPROM_block<T>::begin(eesize_t _dataBegin, eesize_t _dataEnd, eesize_t _statusBegin, eesize_t _statusEnd)
 {
     statusLength = _statusEnd - _statusBegin;
     dataBegin = _dataBegin;
@@ -88,7 +88,7 @@ void __EEPROM_block<T>::begin(uint32_t _dataBegin, uint32_t _dataEnd, uint32_t _
 template <class T>
 void __EEPROM_block<T>::put(T data)
 {
-    uint32_t writePos = getNextWritePosition();
+    eesize_t writePos = getNextWritePosition();
     // Serial.println(write_pos);
     EEPROM.put(((writePos - statusBegin) * sizeof(T)) + dataBegin, data);    // write data segment
     // Serial.println((write_pos - status_begin)*sizeof(T));
@@ -141,24 +141,24 @@ void __EEPROM_block<T>::getBlockInfo(Block_data &info)
  * @param[in] totalSpaceToAllocate Total amount of bytes available for all variables.
  */
 template <class T, uint16_t amountOfVariables>
-void EEPROMwl<T, amountOfVariables>::distributeUniformly(uint32_t beginAddress, uint32_t totalSpaceToAllocate)
+void EEPROMwl<T, amountOfVariables>::distributeUniformly(eesize_t beginAddress, eesize_t totalSpaceToAllocate)
 {
     //Whole eeprom memory assigned for us should be divided into amountOfVariables blocks, each divided into 2 partitions - status and data partition
-    uint32_t onePartitionSize = totalSpaceToAllocate / amountOfVariables; //Total size of one block equals total space assigned divided by amount of variables // 256
-    uint32_t statusBufferSize = onePartitionSize / (sizeof(T) + 1);       //Size of one block is divided by (size of variable stored + 1). This is length of status partition// 51,2
-    uint32_t dataBufferSize = statusBufferSize * sizeof(T);               //204,8
+    eesize_t onePartitionSize = totalSpaceToAllocate / amountOfVariables; //Total size of one block equals total space assigned divided by amount of variables // 256
+    eesize_t statusBufferSize = onePartitionSize / (sizeof(T) + 1);       //Size of one block is divided by (size of variable stored + 1). This is length of status partition// 51,2
+    eesize_t dataBufferSize = statusBufferSize * sizeof(T);               //204,8
     //Generally, we divide one block of data (assigned to one variable) in proportion 1:n, where n is sizeof(variable)
-    //This leaves us with an example for uint32_t as variable:
-    //Status length = (block length) / (sizeof(uint32_t) +1 ) = (block length) / 5
-    //Data length = (status length) * sizeof(uint32_t) = (status_length) * 4
+    //This leaves us with an example for eesize_t as variable:
+    //Status length = (block length) / (sizeof(eesize_t) +1 ) = (block length) / 5
+    //Data length = (status length) * sizeof(eesize_t) = (status_length) * 4
 
     for (uint16_t i = 0; i < amountOfVariables; i++) //Let's calculate border values for partitions in each block
     //Comments below contain example values of first block of data when 1024B eeprom is being assigned for 4 x 4 bytes values.
     {
-        uint32_t dataBegin = beginAddress + i * onePartitionSize;      // dataBegin address     0
-        uint32_t dataEnd = dataBegin + dataBufferSize - 1;            // dataEnd address       203
-        uint32_t statusBegin = dataEnd + 1;                           // statusBegin address;  204
-        uint32_t statusEnd = statusBegin + statusBufferSize - 1;      // statusEnd address;    254
+        eesize_t dataBegin = beginAddress + i * onePartitionSize;      // dataBegin address     0
+        eesize_t dataEnd = dataBegin + dataBufferSize - 1;            // dataEnd address       203
+        eesize_t statusBegin = dataEnd + 1;                           // statusBegin address;  204
+        eesize_t statusEnd = statusBegin + statusBufferSize - 1;      // statusEnd address;    254
         data[i].begin(dataBegin, dataEnd, statusBegin, statusEnd);  //Initialize internal _EEPROM_block structure that keeps the data
     }
 }
@@ -172,7 +172,7 @@ void EEPROMwl<T, amountOfVariables>::distributeUniformly(uint32_t beginAddress, 
  * @param[in] totalSpaceToAllocate Total amount of bytes available for all variables.
  */
 template <class T, uint16_t amountOfVariables>
-EEPROMwl<T, amountOfVariables>::EEPROMwl(uint32_t beginAddress, uint32_t totalSpaceToAllocate)
+EEPROMwl<T, amountOfVariables>::EEPROMwl(eesize_t beginAddress, eesize_t totalSpaceToAllocate)
 {
     distributeUniformly(beginAddress, totalSpaceToAllocate);
 }
